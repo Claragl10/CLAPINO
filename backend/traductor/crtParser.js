@@ -47,7 +47,8 @@ function crtToRelationalTree(crt) {
 
   const projection = parseProjection(
     projectedText,
-    predicate.variableToTable
+    predicate.variableToTable,
+    predicate.variableToAlias
   );
 
   let relationalTree =
@@ -124,6 +125,57 @@ function createRelationTreeFromMemberships(
   }
 
   return relationalTree;
+}
+
+/* Genera alias únicos siguiente el orden en el que aparecen las tablas
+  ciclista c - clasificación cl - carrera ca
+*/
+function createVariableAliases(memberships) {
+  const usedAliases = new Set();
+  const variableToAlias = new Map();
+
+  for (const membership of memberships) {
+    const tableName = membership.tableName;
+
+    let alias = null;
+
+    for (
+      let length = 1;
+      length <= tableName.length;
+      length += 1
+    ) {
+      const candidate =
+        tableName.slice(0, length);
+
+      const formattedCandidate =
+        candidate.charAt(0).toUpperCase() +
+        candidate.slice(1).toLowerCase();
+
+      if (
+        !usedAliases.has(
+          formattedCandidate.toLowerCase()
+        )
+      ) {
+        alias = formattedCandidate;
+        break;
+      }
+    }
+
+    if (!alias) {
+      throw new Error(
+        `No se ha podido generar un alias único para la tabla ${tableName}`
+      );
+    }
+
+    usedAliases.add(alias.toLowerCase());
+
+    variableToAlias.set(
+      membership.tupleVariable,
+      alias
+    );
+  }
+
+  return variableToAlias;
 }
 
 /**
@@ -400,6 +452,8 @@ function parsePredicate(predicateText) {
     );
   });
 
+  const variableToAlias = createVariableAliases(memberships);
+
   /*
    * Si no queda nada, no existe selección.
    */
@@ -407,6 +461,7 @@ function parsePredicate(predicateText) {
     return {
       memberships,
       variableToTable,
+      variableToAlias,
       condition: null
     };
   }
@@ -417,12 +472,14 @@ function parsePredicate(predicateText) {
 
   const condition = parseConditionTokens(
     tokens,
-    variableToTable
+    variableToTable,
+    variableToAlias
   );
 
   return {
     memberships,
     variableToTable,
+    variableToAlias,
     condition
   };
 }
@@ -440,7 +497,8 @@ function parsePredicate(predicateText) {
  */
 function parseProjection(
   projectedText,
-  variableToTable
+  variableToTable,
+  variableToAlias
 ) {
   const projectedItems =
     splitProjectedAttributes(projectedText);
@@ -470,7 +528,8 @@ function parseProjection(
     (projectedItem) =>
       parseProjectedAttribute(
         projectedItem,
-        variableToTable
+        variableToTable,
+        variableToAlias
       )
   );
 
@@ -518,7 +577,8 @@ function splitProjectedAttributes(projectedText) {
  */
 function parseProjectedAttribute(
   projectedItem,
-  variableToTable
+  variableToTable,
+  variableToAlias
 ) {
   const qualifiedMatch =
     projectedItem.match(
@@ -542,20 +602,10 @@ function parseProjectedAttribute(
 
     return {
       type: "attribute",
-
-      /*
-       * Guardamos el nombre real de la tabla.
-       *
-       * t1.nombre
-       *
-       * donde:
-       * t1 -> ciclista
-       *
-       * se convierte en:
-       * ciclista.nombre
-       */
-      table: variableToTable.get(variable),
-
+      table:
+        variableToTable.size === 1
+          ? null
+          : variableToAlias.get(variable),
       name: attributeName,
       alias: null
     };
@@ -878,7 +928,8 @@ function readStringLiteral(text, startPosition) {
  */
 function parseConditionTokens(
   tokens,
-  variableToTable
+  variableToTable,
+  variableToAlias
 ) {
   let currentPosition = 0;
 
@@ -1078,7 +1129,10 @@ function parseConditionTokens(
 
         return {
           type: "attribute",
-          table: variableToTable.get(variable),
+          table:
+            variableToTable.size === 1
+              ? null
+              : variableToAlias.get(variable),
           name: attributeName
         };
       }

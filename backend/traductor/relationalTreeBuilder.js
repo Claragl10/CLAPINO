@@ -65,6 +65,27 @@ function validateSelectAst(ast) {
     }
   }
 
+  /*Comprobar que dos tablas no tengan el mismo alias*/
+
+  const usedAliases = new Set();
+
+  for (const fromItem of ast.from) {
+    if (!fromItem.as) {
+      continue;
+    }
+
+    const normalizedAlias =
+      fromItem.as.toLowerCase();
+
+    if (usedAliases.has(normalizedAlias)) {
+      throw new Error(
+        `No se puede utilizar el mismo alias '${fromItem.as}' para dos tablas distintas`
+      );
+    }
+
+    usedAliases.add(normalizedAlias);
+  }
+
   if (!Array.isArray(ast.columns) || ast.columns.length === 0) {
     throw new Error("No se han podido identificar las columnas");
   }
