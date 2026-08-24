@@ -268,6 +268,169 @@
   transform: scale(1.15);
 }
 
+/* ========================================
+   PÁGINA DE INICIO
+======================================== */
+
+.inicio {
+  min-height: 100vh;
+  width: 100%;
+  background: #111827;
+  color: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.inicio-contenido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  /* Lo subimos ligeramente respecto al centro */
+  transform: translateY(-35px);
+}
+
+/* Nombre de la aplicación */
+.inicio-contenido h1 {
+  margin: 0 0 22px;
+
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 76px;
+  font-weight: 500;
+  letter-spacing: 8px;
+
+  color: white;
+}
+
+/* TRADUCTOR / SQL · CRT · AR */
+.inicio-contenido p {
+  margin: 4px 0;
+
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 5px;
+
+  color: #cbd5e1;
+}
+
+.inicio-subtitulo {
+  font-size: 16px !important;
+  letter-spacing: 6px !important;
+}
+
+.inicio-lenguajes {
+  margin-top: 8px !important;
+  font-size: 14px !important;
+  letter-spacing: 4px !important;
+  color: #94a3b8 !important;
+}
+
+.google-login {
+  margin-top: 42px;
+}
+
+/* ========================================
+   USUARIO
+======================================== */
+
+.user-menu {
+  position: relative;
+}
+
+.user-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+  object-fit: cover;
+
+  border: 2px solid white;
+}
+
+.user-avatar:hover {
+  opacity: 0.85;
+}
+
+.user-dropdown {
+  position: absolute;
+
+  top: 52px;
+  right: 0;
+
+  width: 240px;
+
+  background: white;
+  color: #1f2937;
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.2);
+
+  overflow: hidden;
+
+  z-index: 100;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+
+  padding: 16px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.user-info strong {
+  font-size: 14px;
+}
+
+.user-info span {
+  margin-top: 4px;
+
+  font-size: 12px;
+  color: #6b7280;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown > button {
+  width: 100%;
+
+  border: none;
+  background: white;
+
+  padding: 13px 16px;
+
+  text-align: left;
+
+  color: #dc2626;
+
+  cursor: pointer;
+
+  font-weight: 600;
+}
+
+.user-dropdown > button:hover {
+  background: #f9fafb;
+}
+
 @media (max-width: 1100px) {
   .translation-grid {
     grid-template-columns: 1fr;

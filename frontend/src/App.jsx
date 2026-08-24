@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import SymbolBar from "./components/SymbolBar";
+import Inicio from "./components/Inicio";
 
 function App() {
+
+  const [usuario, setUsuario] = useState(null);
+  const [cargandoSesion, setCargandoSesion] = useState(true);
+
+  const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
+  useState(false);
+
   const [sqlQuery, setSqlQuery] = useState("");
   const [crtQuery, setCrtQuery] = useState("");
   const [arQuery, setArQuery] = useState("");
@@ -21,6 +29,41 @@ function App() {
   const [connectedDb, setConnectedDb] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  useEffect(() => {
+    const comprobarSesion = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:5000/auth/me",
+          {
+            credentials: "include"
+          }
+        );
+
+        if (!response.ok) {
+          setUsuario(null);
+          return;
+        }
+
+        const data = await response.json();
+
+        setUsuario(data.usuario);
+
+      } catch (error) {
+        console.error(
+          "Error comprobando la sesión:",
+          error
+        );
+
+        setUsuario(null);
+
+      } finally {
+        setCargandoSesion(false);
+      }
+    };
+
+    comprobarSesion();
+  }, []);
+
   const crtSymbols = [
     { symbol: "∧", label: "AND lógico" },
     { symbol: "∨", label: "OR lógico" },
@@ -28,7 +71,6 @@ function App() {
     { symbol: "¬", label: "NOT lógico" }
   ];
 
-  /* NO SÉ SI ES NECESARIO PONERLO YA QUE AQUÍ NO VAMOS A ESCRIBIR*/
   const arSymbols = [
     { symbol: "π", label: "Proyección" },
     { symbol: "σ", label: "Selección" },
@@ -83,103 +125,7 @@ function App() {
       setError(err.message);
     }
   };
-/*
-  const translateARToCRT = async () => {
-    try {
-      setError(null);
 
-      if (!connectedDb) {
-        throw new Error("Primero debes conectar una base de datos");
-      }
-
-      const response = await fetch("http://localhost:5000/traducir", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          query: arQuery,
-          dbConfig: connectedDb,
-          outputType: "crt"
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error);
-      }
-
-      setCrtQuery(data.crt);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const translateCRTToSQL = async () => {
-    try {
-      setError(null);
-
-      if (!connectedDb) {
-        throw new Error("Primero debes conectar una base de datos");
-      }
-
-      const response = await fetch("http://localhost:5000/traducir", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          query: crtQuery,
-          dbConfig: connectedDb,
-          outputType: "sql"
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error);
-      }
-
-      setSqlQuery(data.sql);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const translateARToSQL = async () => {
-    try {
-      setError(null);
-
-      if (!connectedDb) {
-        throw new Error("Primero debes conectar una base de datos");
-      }
-
-      const response = await fetch("http://localhost:5000/traducir", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          query: arQuery,
-          dbConfig: connectedDb,
-          outputType: "sql"
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error);
-      }
-
-      setSqlQuery(data.sql);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-*/
   const executeSQL = async () => {
     try {
       setError(null);
@@ -330,6 +276,56 @@ function App() {
     }
   };
 
+  if (cargandoSesion) {
+    return (
+      <div className="inicio">
+        <div className="inicio-contenido">
+          <h1>CLAPINO</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!usuario) {
+    return (
+      <Inicio
+        onEntrar={(usuarioGoogle) => {
+          setUsuario(usuarioGoogle);
+        }}
+      />
+    );
+  }
+
+  const cerrarSesion = async () => {
+    try {
+
+      const response = await fetch(
+        "http://localhost:5000/auth/logout",
+        {
+          method: "POST",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se ha podido cerrar la sesión"
+        );
+      }
+
+      setUsuario(null);
+      setMenuUsuarioAbierto(false);
+
+    } catch (error) {
+
+      console.error(
+        "Error cerrando sesión:",
+        error
+      );
+
+    }
+  };
+
   return (
     <div className="app">
       <header className="topbar">
@@ -353,6 +349,36 @@ function App() {
           >
             Conectar BD
           </button>
+
+          <div className="user-menu">
+            <button
+              className="user-button"
+              onClick={() =>
+                setMenuUsuarioAbierto(!menuUsuarioAbierto)
+              }
+            >
+              <img
+                src={usuario.foto}
+                alt="Usuario"
+                className="user-avatar"
+              />
+            </button>
+
+            {menuUsuarioAbierto && (
+              <div className="user-dropdown">
+
+                <div className="user-info">
+                  <strong>{usuario.nombre}</strong>
+                  <span>{usuario.email}</span>
+                </div>
+
+                <button onClick={cerrarSesion}>
+                  Cerrar sesión
+                </button>
+
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

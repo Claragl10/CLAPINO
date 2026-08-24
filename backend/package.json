@@ -12,7 +12,10 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "google-auth-library": "^11.0.2",
     "mysql2": "^3.23.2",
     "node-sql-parser": "^5.4.0"
   }

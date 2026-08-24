@@ -1,6 +1,10 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
+const session = require("express-session");
+const { OAuth2Client } = require("google-auth-library");
 
 const { createSqlAst } = require("./traductor/sqlAstParser");
 
@@ -17,8 +21,33 @@ const { treeToCRT } = require("./traductor/treeToCRT");
 
 const app = express();
 
-app.use(cors());
+const googleClient = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID
+);
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  })
+);
+
 app.use(express.json());
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24
+    }
+  })
+);
 
 function traducirErrorSQL(error) {
   const mensaje = error.message || "";
@@ -131,6 +160,76 @@ app.post("/api/db/test", async (req, res) => {
       error: traducirErrorSQL(error)
     });
   }
+});
+
+app.post("/auth/google", async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        error: "No se ha recibido la credencial de Google"
+      });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    const usuario = {
+      id: payload.sub,
+      nombre: payload.name,
+      email: payload.email,
+      foto: payload.picture
+    };
+
+    // Guardamos el usuario en la sesión
+    req.session.usuario = usuario;
+
+    res.json({
+      ok: true,
+      usuario
+    });
+
+  } catch (error) {
+    console.error("Error verificando Google:", error);
+
+    res.status(401).json({
+      error: "Credencial de Google no válida"
+    });
+  }
+});
+
+app.get("/auth/me", (req, res) => {
+  if (!req.session.usuario) {
+    return res.status(401).json({
+      autenticado: false
+    });
+  }
+
+  res.json({
+    autenticado: true,
+    usuario: req.session.usuario
+  });
+});
+
+app.post("/auth/logout", (req, res) => {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({
+        error: "No se ha podido cerrar la sesión"
+      });
+    }
+
+    res.clearCookie("connect.sid");
+
+    res.json({
+      ok: true
+    });
+  });
 });
 
 app.post("/execute-sql", async (req, res) => {
