@@ -6,6 +6,7 @@ const mysql = require("mysql2/promise");
 const session = require("express-session");
 const { OAuth2Client } = require("google-auth-library");
 
+
 const { createSqlAst } = require("./traductor/sqlAstParser");
 
 const {
@@ -18,6 +19,14 @@ const {
 
 const { treeToAR } = require("./traductor/treeToAR");
 const { treeToCRT } = require("./traductor/treeToCRT");
+
+const {
+  CONTEXTO_ASISTENTE
+} = require("./asistente/contextoAsistente");
+
+const {
+  construirContextoActual
+} = require("./asistente/construirContexto");
 
 const app = express();
 
@@ -375,6 +384,112 @@ app.post("/traducir-crt", (req, res) => {
     return res.status(400).json({
       ok: false,
       error: error.message
+    });
+  }
+});
+
+app.post("/api/asistente", async (req, res) => {
+  try {
+    const {
+      pregunta,
+      contexto = {}
+    } = req.body;
+
+    if (
+      typeof pregunta !== "string" ||
+      !pregunta.trim()
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Debes enviar una pregunta"
+      });
+    }
+
+    const contextoActual =
+      construirContextoActual(contexto); 
+
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+
+        headers: {
+          "Authorization":
+            `Bearer ${process.env.OPENROUTER_API_KEY}`,
+
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+
+          reasoning: {
+            effort: "low",
+            exclude: true
+          },
+
+          max_tokens: 1000,
+
+          messages: [
+            {
+              role: "system",
+              content: CONTEXTO_ASISTENTE
+            },
+            {
+              role: "system",
+              content: contextoActual
+            },
+            {
+              role: "user",
+              content: pregunta.trim()
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Error de OpenRouter:",
+        data
+      );
+
+      return res.status(response.status).json({
+        ok: false,
+        error:
+          data?.error?.message ||
+          "OpenRouter ha devuelto un error"
+      });
+    }
+
+    const respuesta =
+      data.choices?.[0]?.message?.content;
+
+    if (!respuesta) {
+      return res.status(500).json({
+        ok: false,
+        error:
+          "OpenRouter no ha devuelto una respuesta válida"
+      });
+    }
+
+    return res.json({
+      ok: true,
+      respuesta
+    });
+
+  } catch (error) {
+    console.error(
+      "Error en el asistente:",
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error:
+        "No se ha podido obtener una respuesta del asistente"
     });
   }
 });

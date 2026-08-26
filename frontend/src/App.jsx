@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import SymbolBar from "./components/SymbolBar";
 import Inicio from "./components/Inicio";
+import Asistente from "./components/Asistente";
 
 function App() {
 
@@ -580,6 +581,15 @@ function App() {
           </div>
         </div>
       )}
+
+      <Asistente
+        sql={sqlQuery}
+        crt={crtQuery}
+        ar={arQuery}
+        error={error}
+        resultado={result?.resultado || null}
+        baseDatos={connectedDb?.database || ""}
+      />
     </div>
   );
 }
