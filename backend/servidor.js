@@ -28,6 +28,14 @@ const {
   construirContextoActual
 } = require("./asistente/construirContexto");
 
+const {
+  construirHistorial
+} = require("./asistente/construirHistorial");
+
+const {
+  consultarLLM
+} = require("./asistente/consultarLLM");
+
 const app = express();
 
 const googleClient = new OAuth2Client(
@@ -392,7 +400,8 @@ app.post("/api/asistente", async (req, res) => {
   try {
     const {
       pregunta,
-      contexto = {}
+      contexto = {},
+      historial = []
     } = req.body;
 
     if (
@@ -408,72 +417,29 @@ app.post("/api/asistente", async (req, res) => {
     const contextoActual =
       construirContextoActual(contexto); 
 
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
+    const historialConversacion =
+      construirHistorial(historial);
+
+    const mensajesLLM = [
       {
-        method: "POST",
+        role: "system",
+        content: CONTEXTO_ASISTENTE
+      },
+      {
+        role: "system",
+        content: contextoActual
+      },
 
-        headers: {
-          "Authorization":
-            `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      ...historialConversacion,
 
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
-
-          reasoning: {
-            effort: "low",
-            exclude: true
-          },
-
-          max_tokens: 1000,
-
-          messages: [
-            {
-              role: "system",
-              content: CONTEXTO_ASISTENTE
-            },
-            {
-              role: "system",
-              content: contextoActual
-            },
-            {
-              role: "user",
-              content: pregunta.trim()
-            }
-          ]
-        })
+      {
+        role: "user",
+        content: pregunta.trim()
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error(
-        "Error de OpenRouter:",
-        data
-      );
-
-      return res.status(response.status).json({
-        ok: false,
-        error:
-          data?.error?.message ||
-          "OpenRouter ha devuelto un error"
-      });
-    }
+    ];
 
     const respuesta =
-      data.choices?.[0]?.message?.content;
-
-    if (!respuesta) {
-      return res.status(500).json({
-        ok: false,
-        error:
-          "OpenRouter no ha devuelto una respuesta válida"
-      });
-    }
+      await consultarLLM(mensajesLLM);
 
     return res.json({
       ok: true,
